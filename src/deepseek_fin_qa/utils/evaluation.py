@@ -64,6 +64,10 @@ def list_to_markdown_table(data: list[list[str]]) -> str:
 
 def get_execution_match(target_value: str, llm_value: str) -> bool:
     """Check if the target and LLM values match accounting for formatting."""
+    # Handle bool values
+    if target_value in ["yes", "no"]:
+        return target_value == llm_value
+
     # Strip punctuation and spaces from both values
     target_value = target_value.replace(
         "%", "").replace(",", "").replace(" ", "")
