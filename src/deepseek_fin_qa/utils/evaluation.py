@@ -4,6 +4,18 @@ import re
 from deepseek_fin_qa.log import LOG
 
 
+def str_to_float(value: str) -> float:
+    """Convert a string to a float using regex matching."""
+    num_regex = re.compile(r"[-+]?\d*\.\d+|\d+")
+    match = num_regex.search(value)
+
+    if match:
+        return float(match.group())
+
+    LOG.warning(f"Failed to convert string to float: {value}")
+    return math.nan
+
+
 def evaluate_program(code: str) -> float | str:
     """Safe evaluation of a mathematical expression."""
     # Find operation that can be evaluated
@@ -38,10 +50,7 @@ def evaluate_program(code: str) -> float | str:
         code = code.replace(match.group(), str(result))
         match = op_regex.search(code)
 
-    try:
-        return float(code)
-    except ValueError:
-        return math.nan
+    return str_to_float(code)
 
 
 def list_to_markdown_table(data: list[list[str]]) -> str:
@@ -77,17 +86,8 @@ def get_execution_match(target_value: str, llm_value: str) -> bool:
     target_rounding = len(target_value.split(
         ".")[1]) if "." in target_value else 0
 
-    try:
-        llm_value_f = round(float(llm_value), target_rounding)
-    except ValueError as ex:
-        LOG.warning(ex)
-        llm_value_f = math.nan
-
-    try:
-        target_value_f = float(target_value)
-    except ValueError as ex:
-        LOG.warning(ex)
-        target_value_f = math.nan
+    llm_value_f = round(str_to_float(llm_value), target_rounding)
+    target_value_f = str_to_float(target_value)
 
     return math.isclose(target_value_f, llm_value_f)
 

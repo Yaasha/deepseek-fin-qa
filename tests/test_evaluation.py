@@ -5,6 +5,7 @@ from deepseek_fin_qa.utils.evaluation import (
     get_execution_match,
     get_program_output_match,
     list_to_markdown_table,
+    str_to_float,
 )
 
 
@@ -86,3 +87,21 @@ def test_get_program_output_match() -> None:
     llm_value = 4.5
     result = get_program_output_match(target_value, llm_value)
     assert result == False
+
+
+def test_str_to_float() -> None:
+    """Test conversion of a string to a float."""
+    # Test case 1: Empty string
+    value = ""
+    result = str_to_float(value)
+    assert result is math.nan
+
+    # Test case 2: Valid float
+    value = "10.5"
+    result = str_to_float(value)
+    assert result == 10.5
+
+    # Test case 3: Float with extra characters
+    value = "$10.5million\n\n"
+    result = str_to_float(value)
+    assert result == 10.5
