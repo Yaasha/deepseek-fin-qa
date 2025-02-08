@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 from llama_index.core.llms import ChatMessage
 from llama_index.core.output_parsers import PydanticOutputParser
 
+from deepseek_fin_qa.log import LOG
 from deepseek_fin_qa.prompts import FINQA_SYSTEM_PROMPT, FINQA_USER_PROMPT
 from deepseek_fin_qa.schemas.qa import Answer, FinQA
 from deepseek_fin_qa.utils.cache import ChatCache
@@ -15,7 +16,7 @@ if TYPE_CHECKING:
 class ReasoningOutputParser(PydanticOutputParser):
     """Custom output parser for reasoning models."""
 
-    def parse(self, text: str) -> Answer:
+    def parse(self, text: str) -> Answer | None:
         """Parse the output text of a reasoning model.
 
         Deepseek includes <think></think> tags in the output text. This method
@@ -30,12 +31,17 @@ class ReasoningOutputParser(PydanticOutputParser):
 
         """
         if "```json" in text:
-            text = text[text.find("```json") :]
+            text = text[text.find("```json"):]
         elif "{" in text:
-            text = text[text.rfind("{") :]
+            text = text[text.rfind("{"):]
         elif "</think>" in text:
-            text = text[text.find("</think>") :]
-        return super().parse(text)
+            text = text[text.find("</think>"):]
+
+        try:
+            return super().parse(text)
+        except ValueError:
+            LOG.warning(f"Failed to parse output: {text}")
+            return None
 
 
 class BaseModelWrapper:
@@ -61,7 +67,7 @@ class BaseModelWrapper:
 
         self.model: FunctionCallingLLM
 
-    def answer_questions(self, fin_qa: FinQA) -> list[Answer]:
+    def answer_questions(self, fin_qa: FinQA) -> list[Answer | None]:
         """Answer a list of questions.
 
         Args:
@@ -98,7 +104,8 @@ class BaseModelWrapper:
             if response is None:
                 response = self.model.chat(messages)  # Get response from model
                 if self.cache:
-                    self.cache.set(str(messages), str(response))  # Cache the response
+                    self.cache.set(str(messages), str(
+                        response))  # Cache the response
 
             # Parse the response
             answers.append(self.parser.parse(str(response)))
