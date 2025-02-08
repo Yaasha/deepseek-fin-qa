@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     backend: str = "ollama"
     model: str = "deepseek-r1:14b"
 
+    base_url: str | None = None
     api_key: str | None = None
 
 

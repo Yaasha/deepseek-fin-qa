@@ -1,6 +1,7 @@
 from llama_index.llms.ollama import Ollama
 
 from deepseek_fin_qa.models.base import BaseModelWrapper
+from deepseek_fin_qa.settings import settings
 
 
 class OllamaModel(BaseModelWrapper):
@@ -13,6 +14,6 @@ class OllamaModel(BaseModelWrapper):
         self.model = Ollama(
             model=self.model_name,
             request_timeout=120,
-            base_url="http://100.100.6.6:11434",
+            base_url=settings.base_url,
             temperature=0,
         )
