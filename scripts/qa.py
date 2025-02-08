@@ -41,7 +41,7 @@ def process_data(src: str, out: str) -> None:
                 qa.llm_answer = answer
                 LOG.debug(f"Match: {qa.score}")
             answered_dataset.finqa_list.append(fin_qa)
-        except ValidationError as ex:
+        except Exception as ex:  # noqa: BLE001
             LOG.warning(ex)
 
     with Path(out).open("w") as f:
