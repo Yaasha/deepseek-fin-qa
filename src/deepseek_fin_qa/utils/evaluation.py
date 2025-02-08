@@ -1,12 +1,14 @@
 import math
 import re
+from math import ceil, floor
+from typing import Literal
 
 from deepseek_fin_qa.log import LOG
 
 
 def str_to_float(value: str) -> float:
     """Convert a string to a float using regex matching."""
-    num_regex = re.compile(r"[-+]?\d*\.\d+|\d+")
+    num_regex = re.compile(r"[-+]?\d*\.?\d+")
     match = num_regex.search(value)
 
     if match:
@@ -28,7 +30,7 @@ def evaluate_program(code: str) -> float | str:
         # Parse operation and operands
         operation = match.group(1)
         operands = match.group(2)
-        num1, num2 = map(float, operands.split(","))
+        num1, num2 = map(str_to_float, operands.split(","))
 
         # Evaluate operation
         result = ""
@@ -71,11 +73,24 @@ def list_to_markdown_table(data: list[list[str]]) -> str:
     return markdown
 
 
+def float_round(
+    num: float, places: int = 0, direction: Literal[floor, ceil] = floor
+) -> float:
+    """Round a float number to the nearest place."""
+    return direction(num * (10**places)) / float(10**places)
+
+
 def get_execution_match(target_value: str, llm_value: str) -> bool:
     """Check if the target and LLM values match accounting for formatting."""
     # Handle bool values
     if target_value in ["yes", "no"]:
+        llm_value = llm_value.replace("false", "no").replace("true", "yes")
         return target_value == llm_value
+
+    # Sign for percentage values is ambiguous as question asks for difference
+    if target_value.endswith("%"):
+        target_value = target_value.strip("-")
+        llm_value = llm_value.strip("-")
 
     # Strip punctuation and spaces from both values
     target_value = target_value.replace(
@@ -86,10 +101,20 @@ def get_execution_match(target_value: str, llm_value: str) -> bool:
     target_rounding = len(target_value.split(
         ".")[1]) if "." in target_value else 0
 
-    llm_value_f = round(str_to_float(llm_value), target_rounding)
+    llm_value_f = str_to_float(llm_value)
     target_value_f = str_to_float(target_value)
 
-    return math.isclose(target_value_f, llm_value_f)
+    if math.isnan(llm_value_f) or math.isnan(target_value_f):
+        return llm_value_f is target_value_f
+
+    # The rounding in dataset is not consistent
+    # so we need to check multiple rounding options
+    return (
+        math.isclose(target_value_f, float_round(
+            llm_value_f, target_rounding, ceil))
+        or math.isclose(target_value_f,
+                        float_round(llm_value_f, target_rounding, floor))
+    )
 
 
 def get_program_output_match(target_value: str | float, llm_value: str | float) -> bool:
@@ -97,4 +122,9 @@ def get_program_output_match(target_value: str | float, llm_value: str | float) 
     if isinstance(target_value, str) or isinstance(llm_value, str):
         return target_value == llm_value
 
-    return math.isclose(target_value, llm_value)
+    # Check if the values are equal, accounting for percentage formatting
+    return (
+        math.isclose(target_value, llm_value)
+        or math.isclose(target_value, llm_value * 100)
+        or math.isclose(target_value * 100, llm_value)
+    )

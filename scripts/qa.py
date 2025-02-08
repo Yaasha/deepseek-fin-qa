@@ -36,10 +36,10 @@ def process_data(src: str, out: str) -> None:
             answers = model.answer_questions(fin_qa)
             for qa, answer in zip(fin_qa, answers, strict=False):
                 LOG.debug(f"Question: {qa.question}")
-                LOG.debug(f"Context: {fin_qa.context}")
-                LOG.debug(f"Target: {qa.target_answer}")
-                LOG.debug(f"Answer: {answer}")
+                LOG.debug(f"Target answer: {qa.target_answer}")
+                LOG.debug(f"LLM answer: {answer}")
                 qa.llm_answer = answer
+                LOG.debug(f"Match: {qa.score}")
             answered_dataset.finqa_list.append(fin_qa)
         except ValidationError as ex:
             LOG.warning(ex)
